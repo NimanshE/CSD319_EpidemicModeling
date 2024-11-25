@@ -126,7 +126,7 @@ class EpidemicNetworkModel:
 
     def visualize_network_with_mict(self):
         """Visualize network with nodes colored by their MICT values"""
-        plt.figure(figsize=(12, 8))
+        plt.figure(figsize=(36, 24))
 
         # Create a new graph with original node labels
         G_orig = nx.relabel_nodes(self.G, self.reverse_mapping)
@@ -141,7 +141,7 @@ class EpidemicNetworkModel:
                                        node_size=500, cmap=plt.cm.YlOrRd)
 
         # Add node labels
-        nx.draw_networkx_labels(G_orig, pos, font_size=8)
+        nx.draw_networkx_labels(G_orig, pos, font_size=7)
 
         # Add colorbar
         plt.colorbar(nodes, label='Mean Infection Covering Time')
@@ -201,16 +201,144 @@ def create_complex_test_network() -> nx.Graph:
     return G
 
 
+def create_custom_network(community_sizes: list[tuple[int, int]], max_bridges: int) -> nx.Graph:
+    """
+    Create a test network with multiple communities and random bridges between them.
+
+    Args:
+        community_sizes: List of tuples (rows, cols) for each community's grid dimensions
+        max_bridges: Maximum number of bridges between each pair of communities
+
+    Example:
+        # Create network with three communities: 3x3, 4x4, and 2x3, with max 2 bridges between each pair
+        G = create_custom_network([(3,3), (4,4), (2,3)], 2)
+
+    Returns:
+        NetworkX graph with the specified community structure
+    """
+    # Input validation
+    if not community_sizes or max_bridges < 0:
+        raise ValueError("Invalid input parameters")
+
+    # Create individual community grids
+    communities = []
+    node_offset = 0
+
+    for i, (rows, cols) in enumerate(community_sizes):
+        # Create grid graph for this community
+        G_community = nx.grid_2d_graph(rows, cols)
+
+        # Relabel nodes to avoid conflicts by adding offset
+        mapping = {node: (node[0] + node_offset, node[1]) for node in G_community.nodes()}
+        G_community = nx.relabel_nodes(G_community, mapping)
+
+        communities.append(G_community)
+        node_offset += rows + 1  # Add padding between communities
+
+    # Combine all communities
+    G = nx.union_all(communities)
+
+    # Add random bridges between communities
+    for i in range(len(communities)):
+        for j in range(i + 1, len(communities)):
+            # Get nodes from each community
+            nodes_i = list(communities[i].nodes())
+            nodes_j = list(communities[j].nodes())
+
+            # Randomly select number of bridges (1 to max_bridges)
+            num_bridges = np.random.randint(1, max_bridges + 1)
+
+            # Create random bridges
+            bridges = set()
+            attempts = 0
+            max_attempts = len(nodes_i) * len(nodes_j)  # Avoid infinite loop
+
+            while len(bridges) < num_bridges and attempts < max_attempts:
+                node_i = nodes_i[np.random.randint(len(nodes_i))]
+                node_j = nodes_j[np.random.randint(len(nodes_j))]
+                bridge = tuple(sorted([node_i, node_j]))  # Sort to avoid duplicates
+
+                if bridge not in bridges:
+                    bridges.add(bridge)
+                    G.add_edge(*bridge)
+
+                attempts += 1
+
+    # Verify the graph is connected
+    if not nx.is_connected(G):
+        # Add minimum bridges to ensure connectivity
+        components = list(nx.connected_components(G))
+        for comp1, comp2 in zip(components, components[1:]):
+            node1 = list(comp1)[0]
+            node2 = list(comp2)[0]
+            G.add_edge(node1, node2)
+
+    return G
+
+
+def analyze_network_structure(G: nx.Graph):
+    """
+    Print analysis of the network structure including communities and bridges
+
+    Args:
+        G: NetworkX graph to analyze
+    """
+    print("\nNetwork Analysis:")
+    print(f"Total nodes: {G.number_of_nodes()}")
+    print(f"Total edges: {G.number_of_edges()}")
+
+    # Identify communities based on node coordinates
+    communities = {}
+    for node in G.nodes():
+        x_coord = node[0]
+        if x_coord not in communities:
+            communities[x_coord] = []
+        communities[x_coord].append(node)
+
+    # Group nodes into actual communities
+    real_communities = []
+    current_community = []
+    sorted_x = sorted(communities.keys())
+
+    for i in range(len(sorted_x)):
+        current_community.extend(communities[sorted_x[i]])
+        if i == len(sorted_x) - 1 or sorted_x[i + 1] - sorted_x[i] > 1:
+            real_communities.append(current_community)
+            current_community = []
+
+    # Print community information
+    print("\nCommunities:")
+    for i, community in enumerate(real_communities):
+        print(f"Community {i + 1}: {len(community)} nodes")
+
+    # Count bridges between communities
+    print("\nBridges between communities:")
+    for i, comm1 in enumerate(real_communities):
+        for j, comm2 in enumerate(real_communities[i + 1:], i + 1):
+            bridges = sum(1 for u in comm1 for v in comm2 if G.has_edge(u, v))
+            if bridges > 0:
+                print(f"Communities {i + 1} and {j + 1}: {bridges} bridges")
+
+
 # Example usage and demonstration
 def main():
-    # Create test network
-    G = create_complex_test_network()
+    # # Create test network
+    # G = create_complex_test_network()
+
+    community_sizes = [(9, 9), (12, 12), (5, 5), (4, 4), (12, 12), (9,9), (15,15), (13,13), (14,14)]
+    max_bridges = 3
+
+    G = create_custom_network(community_sizes, max_bridges)
+
+    # Analyze and print network structure
+    analyze_network_structure(G)
+
 
     # Set up model parameters
     params = ModelParameters(
         infection_prob=0.1,
         num_simulations=100,
-        seed=18
+        seed=7
     )
 
     # Initialize and run model
