@@ -107,7 +107,7 @@ class EpidemicNetworkModel:
     def plot_infection_times_heatmap(self):
         """Plot heatmap of mean infection times between nodes"""
         plt.figure(figsize=(10, 8))
-        sns.heatmap(self.infection_times, cmap='YlOrRd')
+        sns.heatmap(self.infection_times, cmap='inferno')
         plt.title('Mean Infection Times Between Nodes')
         plt.xlabel('Target Node')
         plt.ylabel('Source Node')
@@ -173,15 +173,15 @@ def create_test_network() -> nx.Graph:
 def create_complex_test_network() -> nx.Graph:
     """Create a more complex test network with 4 communities and multiple inter-community bridges"""
     # Create four connected communities
-    G1 = nx.grid_2d_graph(3, 3)  # 3x3 grid for first community
-    G2 = nx.grid_2d_graph(3, 3)  # 3x3 grid for second community
-    G3 = nx.grid_2d_graph(3, 3)  # 3x3 grid for third community
+    G1 = nx.grid_2d_graph(6, 6)  # 6x6 grid for first community
+    G2 = nx.grid_2d_graph(5, 5)  # 5x5 grid for second community
+    G3 = nx.grid_2d_graph(4, 4)  # 4x4 grid for third community
     G4 = nx.grid_2d_graph(3, 3)  # 3x3 grid for fourth community
 
     # Relabel nodes to avoid conflicts
-    G2 = nx.relabel_nodes(G2, {node: (node[0] + 3, node[1] + 3) for node in G2.nodes()})
-    G3 = nx.relabel_nodes(G3, {node: (node[0] + 6, node[1]) for node in G3.nodes()})
-    G4 = nx.relabel_nodes(G4, {node: (node[0] + 6, node[1] + 3) for node in G4.nodes()})
+    G2 = nx.relabel_nodes(G2, {node: (node[0] + 6, node[1] + 6) for node in G2.nodes()})
+    G3 = nx.relabel_nodes(G3, {node: (node[0] + 11, node[1]) for node in G3.nodes()})
+    G4 = nx.relabel_nodes(G4, {node: (node[0] + 11, node[1] + 4) for node in G4.nodes()})
 
     # Combine communities
     G = nx.union(G1, G2)
@@ -189,14 +189,14 @@ def create_complex_test_network() -> nx.Graph:
     G = nx.union(G, G4)
 
     # Add bridges between communities
-    G.add_edge((2, 2), (3, 3))  # Bridge between G1 and G2
-    G.add_edge((2, 1), (3, 2))  # Bridge between G1 and G2
-    G.add_edge((2, 0), (6, 0))  # Bridge between G1 and G3
-    G.add_edge((2, 2), (6, 2))  # Bridge between G1 and G3
-    G.add_edge((5, 3), (6, 3))  # Bridge between G2 and G4
-    G.add_edge((5, 5), (6, 5))  # Bridge between G2 and G4
-    G.add_edge((8, 0), (8, 3))  # Bridge between G3 and G4
-    G.add_edge((7, 2), (7, 5))  # Bridge between G3 and G4
+    G.add_edge((5, 5), (6, 6))  # Bridge between G1 and G2
+    G.add_edge((5, 4), (6, 3))  # Bridge between G1 and G2
+    G.add_edge((5, 0), (11, 0))  # Bridge between G1 and G3
+    G.add_edge((5, 5), (11, 3))  # Bridge between G1 and G3
+    G.add_edge((10, 6), (11, 6))  # Bridge between G2 and G4
+    G.add_edge((10, 8), (11, 8))  # Bridge between G2 and G4
+    G.add_edge((14, 0), (14, 4))  # Bridge between G3 and G4
+    G.add_edge((13, 3), (13, 6))  # Bridge between G3 and G4
 
     return G
 
